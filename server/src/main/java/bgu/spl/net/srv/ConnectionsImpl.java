@@ -46,11 +46,11 @@ public class ConnectionsImpl<T> implements Connections<T> {
         activeUsers.put(connectionId, user);
     }
 
-    public void disconnect(int connectionId){
+    public void disconnect(int connectionId, boolean closeHandler){
         disconnectUser(connectionId);
         activeUsers.remove(connectionId);
         ConnectionHandler<T> connectionHandler = activeClients.remove(connectionId);
-        if(connectionHandler != null){
+        if(connectionHandler != null && closeHandler){
             try {
                 connectionHandler.close();
             } catch (IOException e) {
@@ -87,9 +87,8 @@ public class ConnectionsImpl<T> implements Connections<T> {
     }
 
     private void disconnectUser(int connectionId){
-        User user = activeUsers.get(connectionId);
-        user.setLoggedIn(false);
-        user.setConnectionId(-1);
+        activeUsers.get(connectionId).setLoggedIn(false);
+        activeUsers.get(connectionId).setConnectionId(-1);
     }
 
     public User userIsExists(String userName){

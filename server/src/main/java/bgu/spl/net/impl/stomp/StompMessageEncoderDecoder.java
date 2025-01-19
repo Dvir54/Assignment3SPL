@@ -19,7 +19,7 @@ public class StompMessageEncoderDecoder implements MessageEncoderDecoder<String>
     }
 
     public byte[] encode(String message) {
-        return (message + "\u0000").getBytes(); //uses utf8 by default
+        return (message).getBytes(); //uses utf8 by default
     }
 
     private void pushByte(byte nextByte) {
