@@ -2,24 +2,33 @@ package bgu.spl.net.srv;
 
 import bgu.spl.net.api.MessageEncoderDecoder;
 import bgu.spl.net.api.MessagingProtocol;
+import bgu.spl.net.api.StompMessagingProtocol;
+import bgu.spl.net.impl.stomp.StompMessageEncoderDecoder;
+import bgu.spl.net.impl.stomp.StompMessageProtocolImpl;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 
-public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler<T> {
+public class BlockingConnectionHandler implements Runnable, ConnectionHandler<String> {
 
-    private final MessagingProtocol<T> protocol;
-    private final MessageEncoderDecoder<T> encdec;
+    private final StompMessageProtocolImpl protocol;
+    private final StompMessageEncoderDecoder encdec;
     private final Socket sock;
     private BufferedInputStream in;
     private BufferedOutputStream out;
     private volatile boolean connected = true;
 
-    public BlockingConnectionHandler(Socket sock, MessageEncoderDecoder<T> reader, MessagingProtocol<T> protocol) {
+    public BlockingConnectionHandler(Socket sock, StompMessageEncoderDecoder reader, StompMessageProtocolImpl protocol, BaseServer baseServer, Integer connectionId) {
         this.sock = sock;
         this.encdec = reader;
         this.protocol = protocol;
+        protocol.start(connectionId, baseServer.getConnectionsImpl());
+    }
+
+    public StompMessageProtocolImpl getProtocol() {
+        return protocol;
     }
 
     @Override
@@ -31,13 +40,10 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
             out = new BufferedOutputStream(sock.getOutputStream());
 
             while (!protocol.shouldTerminate() && connected && (read = in.read()) >= 0) {
-                T nextMessage = encdec.decodeNextByte((byte) read);
+                String nextMessage = encdec.decodeNextByte((byte) read);
                 if (nextMessage != null) {
-                    T response = protocol.process(nextMessage);
-                    if (response != null) {
-                        out.write(encdec.encode(response));
-                        out.flush();
-                    }
+                    //In the process function, the messages have been sent
+                    protocol.process(nextMessage);
                 }
             }
 
@@ -54,7 +60,13 @@ public class BlockingConnectionHandler<T> implements Runnable, ConnectionHandler
     }
 
     @Override
-    public void send(T msg) {
-        //IMPLEMENT IF NEEDED
+    public void send(String msg) {
+        if (msg != null) {
+            try {
+                out.write(encdec.encode(msg));
+                out.flush();
+            } catch (IOException e){}
+        }
     }
 }
+

@@ -2,27 +2,30 @@ package bgu.spl.net.srv;
 
 import bgu.spl.net.api.MessageEncoderDecoder;
 import bgu.spl.net.api.MessagingProtocol;
+import bgu.spl.net.api.StompMessagingProtocol;
+import bgu.spl.net.impl.stomp.StompMessageEncoderDecoder;
+import bgu.spl.net.impl.stomp.StompMessageProtocolImpl;
+
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.function.Supplier;
 
-public abstract class BaseServer<T> implements Server<T> {
+public abstract class BaseServer implements Server<String> {
 
     private final int port;
-    private final Supplier<MessagingProtocol<T>> protocolFactory;
-    private final Supplier<MessageEncoderDecoder<T>> encdecFactory;
+    private final Supplier<StompMessageProtocolImpl> protocolFactory;
+    private final Supplier<StompMessageEncoderDecoder> encdecFactory;
     private ServerSocket sock;
+    private ConnectionsImpl<String> connectionsImpl;
+    private Integer countUniqeID = 0;
 
-    public BaseServer(
-            int port,
-            Supplier<MessagingProtocol<T>> protocolFactory,
-            Supplier<MessageEncoderDecoder<T>> encdecFactory) {
-
+    public BaseServer(int port, Supplier<StompMessageProtocolImpl> protocolFactory, Supplier<StompMessageEncoderDecoder> encdecFactory) {
         this.port = port;
         this.protocolFactory = protocolFactory;
         this.encdecFactory = encdecFactory;
 		this.sock = null;
+        this.connectionsImpl = new ConnectionsImpl<String>();
     }
 
     @Override
@@ -37,11 +40,10 @@ public abstract class BaseServer<T> implements Server<T> {
 
                 Socket clientSock = serverSock.accept();
 
-                BlockingConnectionHandler<T> handler = new BlockingConnectionHandler<>(
-                        clientSock,
-                        encdecFactory.get(),
-                        protocolFactory.get());
-
+                increaseCounter();
+                BlockingConnectionHandler handler = new BlockingConnectionHandler(clientSock, encdecFactory.get(), protocolFactory.get(), this, countUniqeID);
+                //ADD the client to the hashMap of activeClients
+                connectionsImpl.getActiveClients().put(countUniqeID, handler);
                 execute(handler);
             }
         } catch (IOException ex) {
@@ -56,6 +58,14 @@ public abstract class BaseServer<T> implements Server<T> {
 			sock.close();
     }
 
-    protected abstract void execute(BlockingConnectionHandler<T>  handler);
+    public ConnectionsImpl<String> getConnectionsImpl(){
+        return connectionsImpl;
+    }
+
+    public void increaseCounter(){
+        countUniqeID++;
+    }
+
+    protected abstract void execute(BlockingConnectionHandler handler);
 
 }
