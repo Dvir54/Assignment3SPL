@@ -2,6 +2,7 @@ package bgu.spl.net.srv;
 
 import bgu.spl.net.api.MessageEncoderDecoder;
 import bgu.spl.net.api.MessagingProtocol;
+import bgu.spl.net.impl.stomp.StompMessageProtocolImpl;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -119,5 +120,9 @@ public class NonBlockingConnectionHandler<T> implements ConnectionHandler<T> {
     @Override
     public void send(T msg) {
         //IMPLEMENT IF NEEDED
+    }
+
+    public StompMessageProtocolImpl getProtocol(){
+        return (StompMessageProtocolImpl) protocol;
     }
 }
