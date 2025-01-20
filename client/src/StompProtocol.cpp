@@ -7,7 +7,7 @@
 #include "StompProtocol.h"
 
 StompProtocol::StompProtocol()
-    : receiptId(0), subscriptionId(0), userLoggedIn(false), shouldLogOut(false), eventsMap(), userChannelReports()
+    : receiptId(0), subscriptionId(0), logoutReceiptId(0) , userLoggedIn(false), shouldLogOut(false), gotError(false), eventsMap(), userChannelReports()
 {
 }
 
@@ -78,14 +78,24 @@ void StompProtocol::process(std::string inputMsg)
         if (linesMsg[0] == "ERROR")
         {
             for (string line : linesMsg)
-            {
+            {   
                 cout << line << endl;
             }
+
+            setgotError(true);
         }
 
         if (linesMsg[0] == "RECEIPT")
         {   
             cout << linesMsg[1] << endl;
+
+            cout << linesMsg[1].substr(11) << endl;
+
+            if(stoi(linesMsg[1].substr(11)) == logoutReceiptId)
+            {   
+                cout << "babdsads" << endl;
+                shouldLogOut = true;
+            }
         }
 
         if (linesMsg[0] == "CONNECTED")
@@ -214,8 +224,8 @@ string StompProtocol::handleInput(std::string input)
 
     if (vecIn[0] == "logout")
     {
-
         receiptId = receiptId + 1;
+        logoutReceiptId = receiptId;
 
         return "DISCONNECT\n"
                "receipt:" +
@@ -273,6 +283,18 @@ vector<string> StompProtocol::handleReport(string path)
     return emergMsgs;
 }
 
+void StompProtocol::resetProtocol()
+{
+    receiptId = 0;
+    subscriptionId = 0;
+    logoutReceiptId = 0;
+    userLoggedIn = false;
+    shouldLogOut = false;
+    gotError = false;
+    eventsMap.clear();
+    userChannelReports.clear();
+}
+
 int StompProtocol::getReceiptId()
 {
     return this->receiptId;
@@ -285,4 +307,29 @@ int StompProtocol::getSubscriptionId()
 bool StompProtocol::getUserLoggedIn()
 {
     return this->userLoggedIn;
+}
+
+void StompProtocol::setgotError(bool update)
+{
+    gotError = update;
+}
+
+bool StompProtocol::getgotError()
+{
+    return gotError;
+}
+
+int StompProtocol::getLogoutReceiptId()
+{
+    return this->logoutReceiptId;
+}
+
+void StompProtocol::setLogoutReceiptId(int update)
+{
+    logoutReceiptId = update;
+}
+
+bool StompProtocol::getShouldLogOut()
+{
+    return shouldLogOut;
 }

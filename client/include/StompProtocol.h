@@ -15,8 +15,10 @@ class StompProtocol
 private:
     int receiptId;
     int subscriptionId;
+    int logoutReceiptId;
     bool userLoggedIn;
     bool shouldLogOut;
+    bool gotError;
     map<string, int> eventsMap;
     map<string, map<string, vector<Event>>> userChannelReports;
 
@@ -27,7 +29,13 @@ public:
     void process(string inputMsg);
     string handleInput(string input);
     vector<string> handleReport(string path);
+    void resetProtocol();
     int getReceiptId();
     int getSubscriptionId();
     bool getUserLoggedIn();
+    void setgotError(bool update);
+    bool getgotError();
+    int getLogoutReceiptId();
+    void setLogoutReceiptId(int update);
+    bool getShouldLogOut();
 };
