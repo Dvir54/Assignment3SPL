@@ -87,8 +87,11 @@ public class ConnectionsImpl<T> implements Connections<T> {
     }
 
     private void disconnectUser(int connectionId){
-        activeUsers.get(connectionId).setLoggedIn(false);
-        activeUsers.get(connectionId).setConnectionId(-1);
+        User user = activeUsers.get(connectionId);
+        if(user != null){
+            user.setLoggedIn(false);
+            user.setConnectionId(-1);
+        }
     }
 
     public User userIsExists(String userName){
