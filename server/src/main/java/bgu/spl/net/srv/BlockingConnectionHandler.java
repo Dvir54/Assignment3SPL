@@ -61,7 +61,7 @@ public class BlockingConnectionHandler implements Runnable, ConnectionHandler<St
 
     @Override
     public void send(String msg) {
-        if (msg != null) {
+        if (msg != null && connected) {
             try {
                 out.write(encdec.encode(msg));
                 out.flush();
