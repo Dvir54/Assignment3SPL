@@ -65,7 +65,7 @@ bool validateInput(const vector<string> &args)
 	{
 		if (args.size() != 2)
 		{
-			cerr << "join command needs 1 args: {channel_name}" << endl;
+			cerr << "report command needs 1 args: {file}" << endl;
 			return false;
 		}
 	}
@@ -125,12 +125,23 @@ void serverThreadfunc(ConnectionHandler &connectionHandler, StompProtocol &proto
 			if (connectionHandler.getMessage(InputMsg))
 			{
 				protocol.process(InputMsg);
+
+				if(protocol.getgotError())
+				{	
+					connectionHandler.close();
+					isRunning = false;
+				}
+				else if(protocol.getShouldLogOut())
+				{	
+					protocol.resetProtocol();
+					connectionHandler.close();
+				}
 			}
 		}
-		else
-		{
-			this_thread::sleep_for(chrono::milliseconds(50));
-		}
+		// else
+		// {
+		// 	this_thread::sleep_for(chrono::milliseconds(50));
+		// }
 	}
 }
 
@@ -168,7 +179,6 @@ int main(int argc, char *argv[])
 				cerr << "The client is already logged in, log out before trying again" << endl;
 				continue;
 			}
-			// reset the protocol?!?!?!!?!?!?!?!?!?!?!?!?!?!!?!?!?
 
 			host = splitString(InputVec[1], ':').first;
 			port = stoi(splitString(InputVec[1], ':').second);
@@ -198,7 +208,6 @@ int main(int argc, char *argv[])
 		else if (InputVec[0] == "logout")
 		{
 			output = protoStmp.handleInput(input);
-			// connectionHandler->close(); whereee?!?!?
 		}
 		else
 		{
