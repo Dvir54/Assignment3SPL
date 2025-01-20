@@ -1,9 +1,7 @@
 package bgu.spl.net.impl.stomp;
 
-import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
-
 import bgu.spl.net.api.StompMessagingProtocol;
 import bgu.spl.net.srv.Connections;
 import bgu.spl.net.srv.ConnectionsImpl;
@@ -114,6 +112,9 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
 
     private void handleSend(StompFrame message) {
         String destination = message.getHeader("destination");
+        if (destination.startsWith("/")) {
+            destination = destination.substring(1); // Remove the leading slash
+        }
         String receipt = message.getHeader("receipt");
         String body = message.getBody();
 
@@ -121,15 +122,14 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
             sendError("malformed frame received", message, receipt, "The message is not valid");
         }
         else if (!subscriptionIDs.containsValue(destination)){
-            System.err.println("User is not subscribed to the destination");//test
             sendError("User is not subscribed to the destination", message, receipt, "User try to send a message to a destination that he is not subscribed to");
         }
         else{
             ((ConnectionsImpl<String>)connections).incrementCounterMessageId();
             ConcurrentLinkedQueue<Integer> subscribers = ((ConnectionsImpl<String>)connections).getSubscribersToChanel(destination);
             for (Integer subscriber : subscribers) {
-               String subscriptionId = ((ConnectionsImpl<String>)connections).getActiveClients().get(subscriber).getProtocol().getSubscriptionId(destination, subscriptionIDs);
-                connections.send(subscriber, "MESSAGE\nsubscription:" + subscriptionId + "\nmessage-id:" + ((ConnectionsImpl<String>)connections).getCounterMessageId() + "\ndestination:" + destination + "\n\n" + body + "\u0000");
+                String subscriptionId = ((ConnectionsImpl<String>)connections).getActiveClients().get(subscriber).getProtocol().getSubscriptionId(destination, subscriptionIDs);
+                connections.send(subscriber, "MESSAGE\nsubscription:" + subscriptionId + "\nmessage-id:" + ((ConnectionsImpl<String>)connections).getCounterMessageId() + "\ndestination:/" + destination + "\n\n" + body + "\u0000");
             }
             if(receipt != null){
                 connections.send(connectionId, "RECEIPT\nreceipt-id:" + receipt + "\n\n\u0000");
@@ -203,7 +203,6 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
 
             response += "\n\u0000";
             connections.send(connectionId, response);
-            shouldTerminate = true;
         }
         else{
             String response = "ERROR\nmessage:" + errorMessage;
