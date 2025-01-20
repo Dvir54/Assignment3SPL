@@ -1,4 +1,5 @@
 #include "../include/ConnectionHandler.h"
+#include "ConnectionHandler.h"
 
 using boost::asio::ip::tcp;
 
@@ -72,9 +73,19 @@ bool ConnectionHandler::sendLine(std::string &line) {
 	return sendFrameAscii(line, '\n');
 }
 
+bool ConnectionHandler::getMessage(std::string &message)
+{
+    return getFrameAscii(message, '\0');
+}
 
-bool ConnectionHandler::getFrameAscii(std::string &frame, char delimiter) {
-	char ch;
+bool ConnectionHandler::sendMessage(std::string &message)
+{
+    return sendFrameAscii(message, '\0');
+}
+
+bool ConnectionHandler::getFrameAscii(std::string &frame, char delimiter)
+{
+    char ch;
 	// Stop when we encounter the null character.
 	// Notice that the null character is not appended to the frame string.
 	try {
@@ -105,4 +116,14 @@ void ConnectionHandler::close() {
 	} catch (...) {
 		std::cout << "closing failed: connection already closed" << std::endl;
 	}
+}
+
+bool ConnectionHandler::isSocketOpen()
+{
+    return socket_.is_open();
+}
+
+size_t ConnectionHandler::available()
+{
+    return socket_.available();
 }

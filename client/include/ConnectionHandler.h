@@ -37,6 +37,10 @@ public:
 	// Returns false in case connection closed before all the data is sent.
 	bool sendLine(std::string &line);
 
+	bool getMessage(std::string &message);
+
+	bool sendMessage(std::string &message);
+
 	// Get Ascii data from the server until the delimiter character
 	// Returns false in case connection closed before null can be read.
 	bool getFrameAscii(std::string &frame, char delimiter);
@@ -47,5 +51,9 @@ public:
 
 	// Close down the connection properly.
 	void close();
+
+	bool isSocketOpen();
+
+	size_t available();
 
 }; //class ConnectionHandler
