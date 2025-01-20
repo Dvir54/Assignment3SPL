@@ -19,6 +19,7 @@ private:
     bool userLoggedIn;
     bool shouldLogOut;
     bool gotError;
+    string userNameToUse;
     map<string, int> eventsMap;
     map<string, map<string, vector<Event>>> userChannelReports;
 

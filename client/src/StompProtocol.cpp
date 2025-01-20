@@ -7,7 +7,7 @@
 #include "StompProtocol.h"
 
 StompProtocol::StompProtocol()
-    : receiptId(0), subscriptionId(0), logoutReceiptId(0) , userLoggedIn(false), shouldLogOut(false), gotError(false), eventsMap(), userChannelReports()
+    : receiptId(0), subscriptionId(0), logoutReceiptId(0) , userLoggedIn(false), shouldLogOut(false), gotError(false), userNameToUse(""), eventsMap(), userChannelReports()
 {
 }
 
@@ -58,17 +58,17 @@ void StompProtocol::process(std::string inputMsg)
 
         if (linesMsg[0] == "MESSAGE")
         {
-            string newChannelName = linesMsg[3].substr(13);
-            string newUserName = linesMsg[5].substr(6);
-            string newcity = linesMsg[6].substr(7);
-            string newEventName = linesMsg[7].substr(13);
-            string newDateTime = linesMsg[8].substr(12);
+            string newChannelName = linesMsg[1].substr(12);
+            string newUserName = linesMsg[4].substr(6);
+            string newcity = linesMsg[5].substr(6);
+            string newEventName = linesMsg[6].substr(12);
+            string newDateTime = linesMsg[7].substr(11);
 
             map<string, string> newGeneralInformation;
-            newGeneralInformation["active"] = linesMsg[10].substr(9);
-            newGeneralInformation["forces_arrival_at_scene"] = linesMsg[11].substr(26);
+            newGeneralInformation["active"] = linesMsg[9].substr(8);
+            newGeneralInformation["forces_arrival_at_scene"] = linesMsg[10].substr(25);
 
-            string newDescription = linesMsg[13];
+            string newDescription = linesMsg[12];
 
             Event newEvent(newChannelName, newcity, newEventName, stoi(newDateTime), newDescription, newGeneralInformation);
 
@@ -88,12 +88,10 @@ void StompProtocol::process(std::string inputMsg)
         if (linesMsg[0] == "RECEIPT")
         {   
             cout << linesMsg[1] << endl;
-
             cout << linesMsg[1].substr(11) << endl;
 
             if(stoi(linesMsg[1].substr(11)) == logoutReceiptId)
             {   
-                cout << "babdsads" << endl;
                 shouldLogOut = true;
             }
         }
@@ -111,7 +109,8 @@ string StompProtocol::handleInput(std::string input)
     vector<string> vecIn = this->parseArgs(input);
 
     if (vecIn[0] == "login")
-    {
+    {   
+        userNameToUse = vecIn[2];
         string username = vecIn[2];
         string password = vecIn[3];
         receiptId = receiptId + 1;
@@ -126,10 +125,8 @@ string StompProtocol::handleInput(std::string input)
                           "receipt:" +
                to_string(receiptId) + "\n\n\0";
     }
-
-    if (vecIn[0] == "join")
+    else if (vecIn[0] == "join")
     {
-
         string channelName = vecIn[1];
         receiptId = receiptId + 1;
         subscriptionId = subscriptionId + 1;
@@ -137,7 +134,7 @@ string StompProtocol::handleInput(std::string input)
         eventsMap[channelName] = subscriptionId;
 
         return "SUBSCRIBE\n"
-               "destination:/" +
+               "destination:" +
                channelName + "\n"
                              "id:" +
                to_string(subscriptionId) + "\n"
@@ -145,9 +142,8 @@ string StompProtocol::handleInput(std::string input)
                to_string(receiptId) + "\n\n\0";
     }
 
-    if (vecIn[0] == "exit")
+    else if (vecIn[0] == "exit")
     {
-
         string channelName = vecIn[1];
         int subId = eventsMap[channelName];
 
@@ -160,8 +156,9 @@ string StompProtocol::handleInput(std::string input)
                to_string(receiptId) + "\n\n\0";
     }
 
-    if (vecIn[0] == "summary")
+    else if (vecIn[0] == "summary")
     {
+
         string SummaryMsg = "Channel " + vecIn[1] + "\n" + "Stats:\n";
 
         vector<Event> userChannelEventVec = userChannelReports[vecIn[2]][vecIn[1]];
@@ -187,7 +184,7 @@ string StompProtocol::handleInput(std::string input)
 
         SummaryMsg = SummaryMsg + "active: " + to_string(TotalActiveEvents) + "\n" + "forces: " + to_string(numOfArrivedForces) + "\n\n" + "Event Report:\n\n";
 
-        sort(userChannelEventVec.begin(), userChannelEventVec.end(), [](const Event &a, const Event &b)
+        std::sort(userChannelEventVec.begin(), userChannelEventVec.end(), [](const Event &a, const Event &b)
              { return (a.get_date_time() < b.get_date_time()) || (a.get_date_time() == b.get_date_time() && a.get_name() < b.get_name()); });
 
         for (Event event : userChannelEventVec)
@@ -222,8 +219,9 @@ string StompProtocol::handleInput(std::string input)
         }
     }
 
-    if (vecIn[0] == "logout")
-    {
+    else if (vecIn[0] == "logout")
+    {   
+        cout << "Logging out logout" << endl; //test
         receiptId = receiptId + 1;
         logoutReceiptId = receiptId;
 
@@ -236,15 +234,16 @@ string StompProtocol::handleInput(std::string input)
 }
 
 vector<string> StompProtocol::handleReport(string path)
-{
+{   
     vector<string> vecIn = this->parseArgs(path);
     string newPath = vecIn[1];
+
     names_and_events namesAndEvents = parseEventsFile(newPath);
     vector<string> emergMsgs;
 
     for (Event event : namesAndEvents.events)
     {
-
+        event.setEventOwnerUser(userNameToUse);
         string eventOwnerUser = event.getEventOwnerUser();
         string channelName = event.get_channel_name();
         string city = event.get_city();
@@ -256,7 +255,7 @@ vector<string> StompProtocol::handleReport(string path)
         userChannelReports[eventOwnerUser][channelName].push_back(event); // add event to user channel reports
 
         string eventMsg = "SEND\n"
-                          "destination:" +
+                          "destination:/" +
                           channelName + "\n\n"
                                         "user: " +
                           eventOwnerUser + "\n"
@@ -291,6 +290,7 @@ void StompProtocol::resetProtocol()
     userLoggedIn = false;
     shouldLogOut = false;
     gotError = false;
+    userNameToUse = "";
     eventsMap.clear();
     userChannelReports.clear();
 }

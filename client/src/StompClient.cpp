@@ -93,6 +93,14 @@ bool validateInput(const vector<string> &args)
 			return false;
 		}
 	}
+	else if(command == "summary")
+	{
+		if (args.size() != 4)
+		{
+			cerr << "summary command needs 3 args: {channel_name} {user_name} {file}" << endl;
+			return false;
+		}
+	}
 	else
 	{
 		cerr << "Illegal command, please try a different one" << endl;
@@ -114,27 +122,30 @@ void serverThreadfunc(ConnectionHandler &connectionHandler, StompProtocol &proto
 		{
 			string msgToSend = messageQueue.front();
 			messageQueue.pop();
-			// if(&messageQueue != nullptr)
-			// {
 			connectionHandler.sendMessage(msgToSend);
-			// }
+			
 		}
 
 		if (connectionHandler.isSocketOpen() && connectionHandler.available() > 0)
 		{
 			if (connectionHandler.getMessage(InputMsg))
 			{
+				cout << InputMsg << endl; //test
+
 				protocol.process(InputMsg);
 
 				if(protocol.getgotError())
 				{	
 					connectionHandler.close();
+					delete &connectionHandler;
 					isRunning = false;
+					continue;
 				}
 				else if(protocol.getShouldLogOut())
 				{	
 					protocol.resetProtocol();
-					connectionHandler.close();
+					connectionHandler.close();	
+					delete &connectionHandler;
 				}
 			}
 		}
@@ -173,12 +184,17 @@ int main(int argc, char *argv[])
 		}
 
 		if (InputVec[0] == "login")
-		{
+		{	
 			if (connectionHandler != nullptr && connectionHandler->isSocketOpen())
 			{
 				cerr << "The client is already logged in, log out before trying again" << endl;
 				continue;
 			}
+
+			if (serverThread.joinable())
+    		{
+       			 serverThread.join();
+    		}
 
 			host = splitString(InputVec[1], ':').first;
 			port = stoi(splitString(InputVec[1], ':').second);
@@ -196,18 +212,17 @@ int main(int argc, char *argv[])
 
 			serverThread = thread(serverThreadfunc, ref(*connectionHandler), ref(protoStmp), ref(messageQueue));
 		}
+
 		else if (InputVec[0] == "report")
-		{
+		{	
+			cout << "enter report" << endl; //test
 			vector<string> vecIn = protoStmp.handleReport(input);
 			for (string msg : vecIn)
 			{
 				lock_guard<mutex> lock(queueMutex);
 				messageQueue.push(msg);
+				cout << "finish push" << endl; //test
 			}
-		}
-		else if (InputVec[0] == "logout")
-		{
-			output = protoStmp.handleInput(input);
 		}
 		else
 		{
@@ -215,9 +230,11 @@ int main(int argc, char *argv[])
 		}
 
 		if (!output.empty())
-		{
+		{	
+			cout << "output: " << output << endl; //test
 			lock_guard<mutex> lock(queueMutex);
 			messageQueue.push(output);
+			output.clear();
 		}
 	}
 
