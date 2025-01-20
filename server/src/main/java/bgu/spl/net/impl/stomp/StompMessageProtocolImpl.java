@@ -117,11 +117,11 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
         String receipt = message.getHeader("receipt");
         String body = message.getBody();
 
-
         if (destination == null || body == null) {
             sendError("malformed frame received", message, receipt, "The message is not valid");
         }
         else if (!subscriptionIDs.containsValue(destination)){
+            System.err.println("User is not subscribed to the destination");//test
             sendError("User is not subscribed to the destination", message, receipt, "User try to send a message to a destination that he is not subscribed to");
         }
         else{
@@ -195,10 +195,10 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
 
     private void sendError(String errorMessage, StompFrame message, String receipt, String description) {
         if(receipt != null){
-            String response = "ERROR\nreceipt-id:" + receipt + "\nmessage:" + errorMessage + "\n";
+            String response = "ERROR\nreceipt-id:" + receipt + "\nmessage:" + errorMessage;
 
             if (message != null) {
-                response += "The message:\n-----\n" + message.getRawMessage() + "\n-----\n" + description + "\n";
+                response += "\nThe message:\n-----\n" + message.getRawMessage() + "\n-----\n" + description;
             }
 
             response += "\n\u0000";
@@ -206,10 +206,10 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
             shouldTerminate = true;
         }
         else{
-            String response = "ERROR\nmessage:" + errorMessage + "\n";
+            String response = "ERROR\nmessage:" + errorMessage;
 
             if (message != null) {
-                response += "The message:\n-----\n" + message.getRawMessage() + "\n-----\n" + description + "\n";
+                response += "\nThe message:\n-----\n" + message.getRawMessage() + "\n-----\n" + description;
             }
 
             response += "\n\u0000";
