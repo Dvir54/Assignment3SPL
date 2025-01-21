@@ -130,8 +130,6 @@ void serverThreadfunc(ConnectionHandler &connectionHandler, StompProtocol &proto
 		{
 			if (connectionHandler.getMessage(InputMsg))
 			{
-				cout << InputMsg << endl; //test
-
 				protocol.process(InputMsg);
 
 				if(protocol.getgotError())
@@ -139,20 +137,17 @@ void serverThreadfunc(ConnectionHandler &connectionHandler, StompProtocol &proto
 					connectionHandler.close();
 					delete &connectionHandler;
 					isRunning = false;
-					continue;
+					break;
 				}
 				else if(protocol.getShouldLogOut())
 				{	
 					protocol.resetProtocol();
 					connectionHandler.close();	
 					delete &connectionHandler;
+					cout << "Logged out successfully" << endl;
 				}
 			}
 		}
-		// else
-		// {
-		// 	this_thread::sleep_for(chrono::milliseconds(50));
-		// }
 	}
 }
 
@@ -169,7 +164,6 @@ int main(int argc, char *argv[])
 
 	while (isRunning)
 	{
-
 		getline(cin, input);
 		vector<string> InputVec = parseArgsClient(input);
 
@@ -215,13 +209,11 @@ int main(int argc, char *argv[])
 
 		else if (InputVec[0] == "report")
 		{	
-			cout << "enter report" << endl; //test
 			vector<string> vecIn = protoStmp.handleReport(input);
 			for (string msg : vecIn)
 			{
 				lock_guard<mutex> lock(queueMutex);
 				messageQueue.push(msg);
-				cout << "finish push" << endl; //test
 			}
 		}
 		else
@@ -231,7 +223,6 @@ int main(int argc, char *argv[])
 
 		if (!output.empty())
 		{	
-			cout << "output: " << output << endl; //test
 			lock_guard<mutex> lock(queueMutex);
 			messageQueue.push(output);
 			output.clear();
@@ -246,7 +237,6 @@ int main(int argc, char *argv[])
 
 	if (serverThread.joinable())
 	{
-		// isRunning = false; // check if needed!!!!!!!!
 		serverThread.join();
 	}
 
