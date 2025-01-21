@@ -58,15 +58,15 @@ void StompProtocol::process(std::string inputMsg)
 
         if (linesMsg[0] == "MESSAGE")
         {   
-            string newChannelName = linesMsg[1].substr(13);
-            string newUserName = linesMsg[4].substr(6);
-            string newcity = linesMsg[5].substr(6);
-            string newEventName = linesMsg[6].substr(12);
-            string newDateTime = linesMsg[7].substr(11);
+            string newChannelName = linesMsg[3].substr(13);
+            string newUserName = linesMsg[5].substr(6);
+            string newcity = linesMsg[6].substr(6);
+            string newEventName = linesMsg[7].substr(12);
+            string newDateTime = linesMsg[8].substr(11);
 
             map<string, string> newGeneralInformation;
-            newGeneralInformation["active"] = linesMsg[9].substr(8);
-            newGeneralInformation["forces_arrival_at_scene"] = linesMsg[10].substr(25);
+            newGeneralInformation["active"] = linesMsg[10].substr(8);
+            newGeneralInformation["forces_arrival_at_scene"] = linesMsg[11].substr(25);
 
             string newDescription = linesMsg[12];
 
