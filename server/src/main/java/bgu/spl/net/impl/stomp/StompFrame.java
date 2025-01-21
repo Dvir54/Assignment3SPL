@@ -27,7 +27,11 @@ public class StompFrame {
             headers.put(header[0], header[1]);
             i++;
         }
-        body = i + 1 < lines.length ? String.join("\n", lines[i + 1]) : "";
+        i = i +1;
+        while (i < lines.length && !lines[i].isEmpty()){
+            body = body + lines[i] + "\n";
+            i = i +1;
+        }
         return new StompFrame(command, headers, body, rawMessage);
     }
 

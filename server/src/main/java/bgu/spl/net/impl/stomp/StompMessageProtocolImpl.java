@@ -12,10 +12,12 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
     private boolean shouldTerminate = false;
     private int connectionId;
     private Connections<String> connections;
-    private ConcurrentHashMap<String, String> subscriptionIDs;//map of subscription id to each destination
+    private ConcurrentHashMap<String, String> subIdToDestination;//map of subscription id to each destination
+    private ConcurrentHashMap<String, String> destinationToSubId;//map of chanels to each subscription id
 
     public StompMessageProtocolImpl() {
-        this.subscriptionIDs = new ConcurrentHashMap<>();
+        this.subIdToDestination = new ConcurrentHashMap<>();
+        this.destinationToSubId = new ConcurrentHashMap<>();
     }
 
     public void start(int connectionId, Connections<String> connections){
@@ -51,17 +53,12 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
         return shouldTerminate;
     }
 
-    public ConcurrentHashMap<String, String> getSubscriptionIDs() {
-        return subscriptionIDs;
+    public ConcurrentHashMap<String, String> getSubIdToDestination() {
+        return subIdToDestination;
     }
 
-    private String getSubscriptionId(String destination, ConcurrentHashMap<String, String> subscriptionIDs){
-        for (String id : subscriptionIDs.keySet()) {
-            if(subscriptionIDs.get(id).equals(destination)){
-                return id;
-            }
-        }
-        return null;
+    private String getSubscriptionId(String destination){
+        return destinationToSubId.get(destination);
     }
 
     private void handleConnect(StompFrame message) {
@@ -76,15 +73,15 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
             sendError("malformed frame received", message, receipt, "The message is not valid");
             return;
         }
-        //check if the user is already exists
         else{
             User user = ((ConnectionsImpl<String>)connections).userIsExists(login);
+            //check if the user is already exists
             if(user != null){
                 //check if the password is not correct
                 if(!passcode.equals(user.getPasscode())){
                     sendError("Wrong password", message, receipt, "User " + login + "'s password is different than what you inserted");
                 }
-                //check if the user is already logged in
+                //check if the user is already logged in throught another client
                 else if(user.isLoggedIn()){
                     sendError("User is already logged in", message, receipt, "User " + login + " is already logged in from another client");
                 }
@@ -117,22 +114,24 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
         }
         String receipt = message.getHeader("receipt");
         String body = message.getBody();
-
         if (destination == null || body == null) {
             sendError("malformed frame received", message, receipt, "The message is not valid");
         }
-        else if (!subscriptionIDs.containsValue(destination)){
+        //the user doesn't subscribe to the chanel
+        else if (!destinationToSubId.containsKey(destination)){
             sendError("User is not subscribed to the destination", message, receipt, "User try to send a message to a destination that he is not subscribed to");
         }
         else{
             ((ConnectionsImpl<String>)connections).incrementCounterMessageId();
             ConcurrentLinkedQueue<Integer> subscribers = ((ConnectionsImpl<String>)connections).getSubscribersToChanel(destination);
             for (Integer subscriber : subscribers) {
-                String subscriptionId = ((ConnectionsImpl<String>)connections).getActiveClients().get(subscriber).getProtocol().getSubscriptionId(destination, subscriptionIDs);
-                connections.send(subscriber, "MESSAGE\nsubscription:" + subscriptionId + "\nmessage-id:" + ((ConnectionsImpl<String>)connections).getCounterMessageId() + "\ndestination:/" + destination + "\n\n" + body + "\u0000");
-            }
-            if(receipt != null){
-                connections.send(connectionId, "RECEIPT\nreceipt-id:" + receipt + "\n\n\u0000");
+                String subscriptionId = ((ConnectionsImpl<String>)connections).getActiveClients().get(subscriber).getProtocol().getSubscriptionId(destination);
+                if(subscriptionId != null){
+                    connections.send(subscriber, "MESSAGE\nsubscription:" + subscriptionId + "\nmessage-id:" + ((ConnectionsImpl<String>)connections).getCounterMessageId() + "\ndestination:/" + destination + "\n\n" + body + "\u0000");
+                    if(receipt != null){
+                        connections.send(subscriber, "RECEIPT\nreceipt-id:" + receipt + "\n\n\u0000");
+                    }
+                }
             }
         }
     }
@@ -146,18 +145,17 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
         if (destination == null || idSubscription == null || receipt == null) {
             sendError("malformed frame received", message, receipt, "The message is not valid");
         }
-        //check if the user is already subscribed to the destination
-        else if(subscriptionIDs.containsValue(destination)){
-            sendError("User is already subscribed to the destination", message, receipt, "The user can't subscribe to the same destination that he is already subscribed to");
-        }
         //check if the subscription id is already in use
-        else if(subscriptionIDs.containsKey(idSubscription)){
+        else if(subIdToDestination.containsKey(idSubscription)){
             sendError("Subscription ID is already in use", message, receipt, "the subscription id is already in use for another destination");
         }
-        //subscribe the user
         else{
-            subscriptionIDs.put(idSubscription, destination);
-            ((ConnectionsImpl<String>)connections).subscribeClient(connectionId, destination);
+            //subscribe the user if and only if the user doesn't subcribe to this destination
+            if (!destinationToSubId.containsKey(destination)){
+                destinationToSubId.put(destination, idSubscription);
+                subIdToDestination.put(idSubscription, destination);
+                ((ConnectionsImpl<String>)connections).subscribeClient(connectionId, destination);
+            }
             connections.send(connectionId, "RECEIPT\nreceipt-id:" + receipt + "\n\n\u0000");
         }     
     }
@@ -171,12 +169,13 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
             sendError("malformed frame received", message, receipt, "The message is not valid");
         }
         //check if the subscription id is not in use
-        else if (!subscriptionIDs.containsKey(idSubscription)) {
+        else if (!subIdToDestination.containsKey(idSubscription)) {
             sendError("Subscription ID is not in use", message, receipt, "The subscription id is not in use for any destination");
         }
         //unsubscribe the user
         else{
-            String destination = subscriptionIDs.remove(idSubscription);
+            String destination = subIdToDestination.remove(idSubscription);
+            destinationToSubId.remove(destination);
             ((ConnectionsImpl<String>)connections).unSubscribeClient(connectionId, destination);
             connections.send(connectionId, "RECEIPT\nreceipt-id:" + receipt + "\n\n\u0000");
         }
@@ -184,12 +183,19 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
 
     private void handleDisconnect(StompFrame message) {
         String receipt = message.getHeader("receipt");
-        if (receipt != null) {
+
+        //check if the messafe is valid
+        if(receipt == null){
+            sendError("malformed frame received", message, receipt, "The message is not valid");
+        }
+        else {
             String response = "RECEIPT\nreceipt-id:" + receipt + "\n\n\u0000";
             connections.send(connectionId, response);
         }
 
         shouldTerminate = true;
+        subIdToDestination.clear();
+        destinationToSubId.clear();
         connections.disconnect(connectionId, false);
     }
 
@@ -201,7 +207,7 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
                 response += "\nThe message:\n-----\n" + message.getRawMessage() + "\n-----\n" + description;
             }
 
-            response += "\n\u0000";
+            response += "\n\n\u0000";
             connections.send(connectionId, response);
         }
         else{
@@ -211,7 +217,7 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
                 response += "\nThe message:\n-----\n" + message.getRawMessage() + "\n-----\n" + description;
             }
 
-            response += "\n\u0000";
+            response += "\n\n\u0000";
             connections.send(connectionId, response);
         }
         connections.disconnect(connectionId, true);
