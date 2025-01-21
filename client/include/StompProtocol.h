@@ -22,6 +22,8 @@ private:
     string userNameToUse;
     map<string, int> eventsMap;
     map<string, map<string, vector<Event>>> userChannelReports;
+    map<int, string> joinReciepts;
+    map<int, string> exitReciepts;
 
 public:
     StompProtocol();
