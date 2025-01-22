@@ -2,6 +2,9 @@ package bgu.spl.net.srv;
 
 import bgu.spl.net.api.MessageEncoderDecoder;
 import bgu.spl.net.api.MessagingProtocol;
+import bgu.spl.net.impl.stomp.StompMessageEncoderDecoder;
+import bgu.spl.net.impl.stomp.StompMessageProtocolImpl;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.ClosedSelectorException;
@@ -12,27 +15,28 @@ import java.nio.channels.SocketChannel;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.function.Supplier;
 
-public class Reactor<T> implements Server<T> {
+public class Reactor implements Server<String> {
 
     private final int port;
-    private final Supplier<MessagingProtocol<T>> protocolFactory;
-    private final Supplier<MessageEncoderDecoder<T>> readerFactory;
+    private final Supplier<StompMessageProtocolImpl> protocolFactory;
+    private final Supplier<StompMessageEncoderDecoder> readerFactory;
     private final ActorThreadPool pool;
     private Selector selector;
 
     private Thread selectorThread;
     private final ConcurrentLinkedQueue<Runnable> selectorTasks = new ConcurrentLinkedQueue<>();
 
-    public Reactor(
-            int numThreads,
-            int port,
-            Supplier<MessagingProtocol<T>> protocolFactory,
-            Supplier<MessageEncoderDecoder<T>> readerFactory) {
+    private ConnectionsImpl<String> connectionsImpl;
+    private Integer countUniqeID = 0;
+
+
+    public Reactor(int numThreads, int port, Supplier<StompMessageProtocolImpl> protocolFactory, Supplier<StompMessageEncoderDecoder> readerFactory) {
 
         this.pool = new ActorThreadPool(numThreads);
         this.port = port;
         this.protocolFactory = protocolFactory;
         this.readerFactory = readerFactory;
+        this.connectionsImpl = new ConnectionsImpl<String>();
     }
 
     @Override
@@ -95,17 +99,15 @@ public class Reactor<T> implements Server<T> {
     private void handleAccept(ServerSocketChannel serverChan, Selector selector) throws IOException {
         SocketChannel clientChan = serverChan.accept();
         clientChan.configureBlocking(false);
-        final NonBlockingConnectionHandler<T> handler = new NonBlockingConnectionHandler<>(
-                readerFactory.get(),
-                protocolFactory.get(),
-                clientChan,
-                this);
+        increaseCounter();
+        final NonBlockingConnectionHandler handler = new NonBlockingConnectionHandler(readerFactory.get(), protocolFactory.get(), clientChan, this, countUniqeID);
+        connectionsImpl.getActiveClients().put(countUniqeID, handler);
         clientChan.register(selector, SelectionKey.OP_READ, handler);
     }
 
     private void handleReadWrite(SelectionKey key) {
         @SuppressWarnings("unchecked")
-        NonBlockingConnectionHandler<T> handler = (NonBlockingConnectionHandler<T>) key.attachment();
+        NonBlockingConnectionHandler handler = (NonBlockingConnectionHandler) key.attachment();
 
         if (key.isReadable()) {
             Runnable task = handler.continueRead();
@@ -128,6 +130,14 @@ public class Reactor<T> implements Server<T> {
     @Override
     public void close() throws IOException {
         selector.close();
+    }
+
+    public void increaseCounter(){
+        countUniqeID++;
+    }
+
+    public ConnectionsImpl<String> getConnectionsImpl(){
+        return connectionsImpl;
     }
 
 }

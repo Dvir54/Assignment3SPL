@@ -30,15 +30,15 @@ public class StompServer {
                 StompMessageEncoderDecoder::new  // Encoder/decoder factory
             ).serve();
         }
-        //  else if (serverType.equalsIgnoreCase("reactor")) {
-        //     // Start a Reactor server
-        //     Server.reactor(
-        //         Runtime.getRuntime().availableProcessors(),
-        //         port,
-        //         StompMessageProtocolImpl::new,    // Protocol factory
-        //         StompMessageEncoderDecoder::new  // Encoder/decoder factory
-        //     ).serve();
-        // }
+         else if (serverType.equalsIgnoreCase("reactor")) {
+            // Start a Reactor server
+            Server.reactor(
+                Runtime.getRuntime().availableProcessors(),
+                port,
+                StompMessageProtocolImpl::new,    // Protocol factory
+                StompMessageEncoderDecoder::new  // Encoder/decoder factory
+            ).serve();
+        }
         else {
             System.err.println("Invalid server type: " + serverType);
             System.exit(1);

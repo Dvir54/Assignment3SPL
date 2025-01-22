@@ -220,6 +220,7 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
             response += "\n\n\u0000";
             connections.send(connectionId, response);
         }
+        shouldTerminate = true;
         connections.disconnect(connectionId, true);
     }
 
