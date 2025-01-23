@@ -9,6 +9,7 @@ import bgu.spl.net.srv.User;
 
 public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
 
+    private boolean connectionError;
     private boolean shouldTerminate = false;
     private int connectionId;
     private Connections<String> connections;
@@ -18,6 +19,7 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
     public StompMessageProtocolImpl() {
         this.subIdToDestination = new ConcurrentHashMap<>();
         this.destinationToSubId = new ConcurrentHashMap<>();
+        this.connectionError = false;
     }
 
     public void start(int connectionId, Connections<String> connections){
@@ -57,6 +59,10 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
         return subIdToDestination;
     }
 
+    public boolean getConnectionError(){
+        return connectionError;
+    }
+
     private String getSubscriptionId(String destination){
         return destinationToSubId.get(destination);
     }
@@ -79,10 +85,12 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
             if(user != null){
                 //check if the password is not correct
                 if(!passcode.equals(user.getPasscode())){
+                    connectionError = true;
                     sendError("Wrong password", message, receipt, "User " + login + "'s password is different than what you inserted");
                 }
                 //check if the user is already logged in throught another client
                 else if(user.isLoggedIn()){
+                    connectionError = true;
                     sendError("User is already logged in", message, receipt, "User " + login + " is already logged in from another client");
                 }
                 //connect the user
@@ -168,9 +176,9 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
         if (idSubscription == null || receipt == null) {
             sendError("malformed frame received", message, receipt, "The message is not valid");
         }
-        //check if the subscription id is not in use
+        //check if the user doesn't subscribe to the chanel
         else if (!subIdToDestination.containsKey(idSubscription)) {
-            sendError("Subscription ID is not in use", message, receipt, "The subscription id is not in use for any destination");
+            sendError("user doesn't subscribe to the chanel", message, receipt, "you have to subscribe to the chanel first for to be able to exit");
         }
         //unsubscribe the user
         else{
@@ -184,7 +192,7 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
     private void handleDisconnect(StompFrame message) {
         String receipt = message.getHeader("receipt");
 
-        //check if the messafe is valid
+        //check if the message is valid
         if(receipt == null){
             sendError("malformed frame received", message, receipt, "The message is not valid");
         }
@@ -204,7 +212,7 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
             String response = "ERROR\nreceipt-id:" + receipt + "\nmessage:" + errorMessage;
 
             if (message != null) {
-                response += "\nThe message:\n-----\n" + message.getRawMessage() + "\n-----\n" + description;
+                response += "\nThe message:\n-----\n" + message.getRawMessage() + "-----\n" + description;
             }
 
             response += "\n\n\u0000";
@@ -214,7 +222,7 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
             String response = "ERROR\nmessage:" + errorMessage;
 
             if (message != null) {
-                response += "\nThe message:\n-----\n" + message.getRawMessage() + "\n-----\n" + description;
+                response += "\nThe message:\n-----\n" + message.getRawMessage() + "-----\n" + description;
             }
 
             response += "\n\n\u0000";

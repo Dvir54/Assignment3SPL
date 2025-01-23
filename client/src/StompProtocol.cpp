@@ -85,7 +85,7 @@ void StompProtocol::process(std::string inputMsg)
             userChannelReports[newUserName][newChannelName].push_back(newEvent);
         }
 
-        if (linesMsg[0] == "ERROR")
+        else if (linesMsg[0] == "ERROR")
         {
             for (string line : linesMsg)
             {   
@@ -95,7 +95,7 @@ void StompProtocol::process(std::string inputMsg)
             setgotError(true);
         }
 
-        if (linesMsg[0] == "RECEIPT")
+        else if (linesMsg[0] == "RECEIPT")
         {   
             cout << linesMsg[1] << endl;
             int recieptNum = stoi(linesMsg[1].substr(11));
@@ -114,7 +114,7 @@ void StompProtocol::process(std::string inputMsg)
             }
         }
 
-        if (linesMsg[0] == "CONNECTED")
+        else if (linesMsg[0] == "CONNECTED")
         {   
             userLoggedIn = true;
             cout << "Login successful" << endl;
@@ -165,7 +165,6 @@ string StompProtocol::handleInput(std::string input)
     {
         string channelName = vecIn[1];
         int subId = eventsMap[channelName];
-
         receiptId = receiptId + 1;
         exitReciepts[receiptId] = channelName;
 

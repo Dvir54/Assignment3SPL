@@ -19,12 +19,14 @@ public class BlockingConnectionHandler implements Runnable, ConnectionHandler<St
     private BufferedInputStream in;
     private BufferedOutputStream out;
     private volatile boolean connected = true;
+    BaseServer server;
 
     public BlockingConnectionHandler(Socket sock, StompMessageEncoderDecoder reader, StompMessageProtocolImpl protocol, BaseServer baseServer, Integer connectionId) {
         this.sock = sock;
         this.encdec = reader;
         this.protocol = protocol;
         protocol.start(connectionId, baseServer.getConnectionsImpl());
+        this.server = baseServer;
     }
 
     public StompMessageProtocolImpl getProtocol() {
@@ -45,6 +47,9 @@ public class BlockingConnectionHandler implements Runnable, ConnectionHandler<St
                     //In the process function, the messages have been sent
                     protocol.process(nextMessage);
                 }
+            }
+            if(protocol.getConnectionError()){
+                server.decreaseCounter();
             }
 
         } catch (IOException ex) {

@@ -66,6 +66,12 @@ public abstract class BaseServer implements Server<String> {
         countUniqeID++;
     }
 
+    public void decreaseCounter(){
+        if(countUniqeID > 0){
+            countUniqeID--;
+        }
+    }
+
     protected abstract void execute(BlockingConnectionHandler handler);
 
 }

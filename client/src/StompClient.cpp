@@ -186,9 +186,9 @@ int main(int argc, char *argv[])
 			}
 
 			if (serverThread.joinable())
-    		{
-       			 serverThread.join();
-    		}
+			{
+				serverThread.join();
+			}
 
 			host = splitString(InputVec[1], ':').first;
 			port = stoi(splitString(InputVec[1], ':').second);

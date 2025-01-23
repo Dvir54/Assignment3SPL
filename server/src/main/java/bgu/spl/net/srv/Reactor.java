@@ -136,6 +136,12 @@ public class Reactor implements Server<String> {
         countUniqeID++;
     }
 
+    public void decreaseCounter(){
+        if(countUniqeID > 0){
+            countUniqeID--;
+        }
+    }
+
     public ConnectionsImpl<String> getConnectionsImpl(){
         return connectionsImpl;
     }
