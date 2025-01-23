@@ -46,18 +46,10 @@ public class ConnectionsImpl<T> implements Connections<T> {
         activeUsers.put(connectionId, user);
     }
 
-    public void disconnect(int connectionId, boolean closeHandler){
+    public void disconnect(int connectionId){
         disconnectUser(connectionId);
         activeUsers.remove(connectionId);
-        ConnectionHandler<T> connectionHandler = activeClients.remove(connectionId);
-        if(connectionHandler != null && closeHandler){
-            try {
-                connectionHandler.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            
-        }    
+        activeClients.remove(connectionId);    
         removeFromChanels(connectionId);
     }
 

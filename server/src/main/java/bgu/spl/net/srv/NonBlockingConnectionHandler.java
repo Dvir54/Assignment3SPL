@@ -76,7 +76,7 @@ public class NonBlockingConnectionHandler implements ConnectionHandler<String> {
     }
 
     public void continueWrite() {
-        while (!writeQueue.isEmpty()) {
+        while (!writeQueue.isEmpty() && !isClosed()) {
             try {
                 ByteBuffer top = writeQueue.peek();
                 chan.write(top);
@@ -113,7 +113,7 @@ public class NonBlockingConnectionHandler implements ConnectionHandler<String> {
 
     @Override
     public void send(String msg) {
-        if (msg != null) {
+        if (msg != null && !isClosed()) {
             writeQueue.add(ByteBuffer.wrap(encdec.encode(msg)));
             reactor.updateInterestedOps(chan, SelectionKey.OP_READ | SelectionKey.OP_WRITE);
         }

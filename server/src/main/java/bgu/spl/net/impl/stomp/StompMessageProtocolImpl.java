@@ -90,7 +90,7 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
                 }
                 //check if the user is already logged in throught another client
                 else if(user.isLoggedIn()){
-                    connectionError = true;
+                    connectionError = true; 
                     sendError("User is already logged in", message, receipt, "User " + login + " is already logged in from another client");
                 }
                 //connect the user
@@ -204,7 +204,7 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
         shouldTerminate = true;
         subIdToDestination.clear();
         destinationToSubId.clear();
-        connections.disconnect(connectionId, false);
+        connections.disconnect(connectionId);
     }
 
     private void sendError(String errorMessage, StompFrame message, String receipt, String description) {
@@ -215,6 +215,7 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
                 response += "\nThe message:\n-----\n" + message.getRawMessage() + "-----\n" + description;
             }
 
+            response += "\nthe socket is closed, press enter to quit";
             response += "\n\n\u0000";
             connections.send(connectionId, response);
         }
@@ -225,11 +226,12 @@ public class StompMessageProtocolImpl implements StompMessagingProtocol<String>{
                 response += "\nThe message:\n-----\n" + message.getRawMessage() + "-----\n" + description;
             }
 
+            response += "\nthe socket is closed, press enter to quit";
             response += "\n\n\u0000";
             connections.send(connectionId, response);
         }
         shouldTerminate = true;
-        connections.disconnect(connectionId, true);
+        connections.disconnect(connectionId);
     }
 
 }

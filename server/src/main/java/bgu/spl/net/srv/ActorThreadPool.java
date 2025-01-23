@@ -13,7 +13,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class ActorThreadPool {
 
-    //TODO do i need to change the object to nonBCH?
     private final Map<Object, Queue<Runnable>> acts;
     private final ReadWriteLock actsRWLock;
     private final Set<Object> playingNow;
